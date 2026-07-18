@@ -1,0 +1,16 @@
+[Unit]
+Description=RCM FastAPI backend
+After=network.target
+
+[Service]
+Type=simple
+User=__APP_USER__
+Group=__APP_GROUP__
+WorkingDirectory=__APP_DIR__
+Environment=RCM_CORS_ORIGINS=https://michaeljirasek.com,https://www.michaeljirasek.com
+ExecStart=__APP_DIR__/.venv/bin/uvicorn rcm_api:app --host 127.0.0.1 --port 8070
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

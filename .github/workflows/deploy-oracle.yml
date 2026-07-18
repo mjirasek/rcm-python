@@ -1,0 +1,42 @@
+name: Deploy Oracle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rcm-python-oracle
+  cancel-in-progress: false
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: python -m pip install -e ".[api,dev]"
+      - run: python -m pytest
+      - name: Package backend
+        run: tar -czf rcm-python.tar.gz --exclude=.git --exclude=.github --exclude=.venv --exclude=frontend --exclude=tests --exclude=__pycache__ --exclude=.pytest_cache --exclude=.pytest-tmp .
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Upload and install
+        env:
+          HOST: ${{ secrets.ORACLE_HOST }}
+          USER: ${{ secrets.ORACLE_USER }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          scp rcm-python.tar.gz "$USER@$HOST:/tmp/rcm-python-$RUN_ID.tar.gz"
+          ssh "$USER@$HOST" "rm -rf '/tmp/rcm-python-$RUN_ID' && mkdir -p '/tmp/rcm-python-$RUN_ID' && tar -xzf '/tmp/rcm-python-$RUN_ID.tar.gz' -C '/tmp/rcm-python-$RUN_ID' && cd '/tmp/rcm-python-$RUN_ID' && bash deploy/oracle/install_ubuntu.sh && rm -rf '/tmp/rcm-python-$RUN_ID' '/tmp/rcm-python-$RUN_ID.tar.gz'"

@@ -1,0 +1,9 @@
+.git
+.github
+.venv
+deploy
+frontend
+__pycache__
+.pytest_cache
+.pytest-tmp
+tests
